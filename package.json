@@ -1,0 +1,33 @@
+{
+  "name": "deepai-code-omp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "bun test",
+    "lint": "oxlint --type-aware --deny-warnings",
+    "format": "oxfmt"
+  },
+  "dependencies": {
+    "@oh-my-pi/pi-catalog": "18.18.1",
+    "ky": "^1.14.0",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@oh-my-pi/pi-ai": "18.18.1",
+    "@types/bun": "^1.4.2",
+    "oxfmt": "0.74.0",
+    "oxlint": "1.89.0",
+    "oxlint-tsgolint": "7.0.2005",
+    "typescript": "^7.0.2"
+  },
+  "peerDependencies": {
+    "@oh-my-pi/pi-ai": ">=18.18.1"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}
