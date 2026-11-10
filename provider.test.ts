@@ -1,10 +1,12 @@
 import { expect, test } from "bun:test";
 import { scheduler } from "node:timers/promises";
 import { buildModel } from "@oh-my-pi/pi-catalog/build";
+import { getSupportedEfforts } from "@oh-my-pi/pi-catalog/model-thinking";
 import { z } from "zod";
 import {
   registerCustomApi,
   streamSimple,
+  THINKING_EFFORTS,
   unregisterCustomApis,
   type FetchImpl,
   type Model,
@@ -21,6 +23,38 @@ function redirectFetch(origin: string): FetchImpl {
     return fetch(new Request(`${origin}${target.pathname}${target.search}`, request));
   };
 }
+
+test.each([
+  { id: "glm-5.3-flash", efforts: ["low", "high", "max"] },
+  { id: "gpt-6-luna", efforts: ["low", "medium", "high", "xhigh", "max"] },
+  { id: "gpt-6-astra", efforts: ["low", "medium", "high", "xhigh", "max"] },
+  { id: "unlisted-deepai-model", efforts: ["minimal", "low", "medium", "high"] },
+])("the effort menu uses the supported model range for $id", ({ id, efforts }) => {
+  const model = buildModel({
+    ...modelDefinition({ ...SEED_MODEL, id }),
+    provider: PROVIDER_ID,
+    baseUrl: BASE_URL,
+  });
+  expect(getSupportedEfforts(model).map(String)).toEqual([...efforts]);
+});
+
+test("stored model rows regain missing effort choices when OAuth projects the catalog", () => {
+  const cached = buildModel({
+    ...modelDefinition({ ...SEED_MODEL, id: "gpt-6-luna" }),
+    provider: PROVIDER_ID,
+    baseUrl: BASE_URL,
+    thinking: {
+      mode: "effort",
+      efforts: THINKING_EFFORTS.filter((effort) =>
+        ["minimal", "low", "medium", "high"].includes(effort),
+      ),
+    },
+  });
+  const projected = deepAIOAuth.modifyModels([cached]);
+  expect(projected.map((model) => getSupportedEfforts(model).map(String))).toEqual([
+    ["low", "medium", "high", "xhigh", "max"],
+  ]);
+});
 
 test("desktop login rejects a foreign state before redeeming the valid callback", async () => {
   const server = Bun.serve({

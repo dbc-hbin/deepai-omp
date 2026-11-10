@@ -3,6 +3,7 @@ import { OAuthCallbackFlow } from "@oh-my-pi/pi-ai/oauth/callback-server";
 import type { OAuthCredentials, OAuthLoginCallbacks } from "@oh-my-pi/pi-ai/oauth/types";
 import { z } from "zod";
 import { BASE_URL, http } from "./api";
+import { projectDeepAIModels } from "./catalog";
 
 const exchangeSchema = z.object({
   api_key: z
@@ -57,4 +58,7 @@ export const deepAIOAuth = {
   name: "DeepAI Code",
   login: (callbacks: OAuthLoginCallbacks) => new DeepAILogin(callbacks).login(),
   getApiKey: (credentials: OAuthCredentials) => credentials.access,
+  // Reproject cached rows too; their previously fixed effort lists can otherwise
+  // hide new choices until OMP's discovery cache expires.
+  modifyModels: projectDeepAIModels,
 };

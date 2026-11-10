@@ -1,31 +1,60 @@
-import { THINKING_EFFORTS, type Model, type SimpleStreamOptions } from "@oh-my-pi/pi-ai";
+import {
+  THINKING_EFFORTS,
+  type Model,
+  type ModelSpec,
+  type SimpleStreamOptions,
+} from "@oh-my-pi/pi-ai";
 import { buildModel } from "@oh-my-pi/pi-catalog/build";
-import { API_ID, fetchCatalog, type CatalogModel } from "./api";
+import {
+  hasModelScopedEffortLadder,
+  resolveModelPolicy,
+} from "@oh-my-pi/pi-catalog/compat/resolve";
+import { API_ID, BASE_URL, PROVIDER_ID, fetchCatalog, type CatalogModel } from "./api";
+
+function modelThinking(model: Model | ModelSpec) {
+  if (!model.reasoning) return undefined;
+  const { thinking: _thinking, compat: _compat, ...spec } = model;
+  const native = {
+    ...spec,
+    api: "openai-completions" as const,
+    provider: PROVIDER_ID,
+    baseUrl: BASE_URL,
+  };
+  // Do not replace DeepAI's conservative range with the catalog's generic
+  // fallback. Only reviewed model-specific rules justify additional efforts.
+  const thinking = hasModelScopedEffortLadder(native)
+    ? resolveModelPolicy(native).thinking
+    : {
+        mode: "effort" as const,
+        efforts: THINKING_EFFORTS.filter((effort) =>
+          ["minimal", "low", "medium", "high"].includes(effort),
+        ),
+      };
+  return thinking ? { ...thinking, requiresEffort: false, suppressWhenOff: true } : undefined;
+}
 
 export function modelDefinition(model: CatalogModel) {
-  return {
+  const definition = {
     id: model.id,
     name: model.name,
     api: API_ID,
     reasoning: model.reasoning,
-    ...(model.reasoning
-      ? {
-          thinking: {
-            mode: "effort",
-            requiresEffort: false,
-            suppressWhenOff: true,
-            efforts: THINKING_EFFORTS.filter((effort) =>
-              ["minimal", "low", "medium", "high"].includes(effort),
-            ),
-          } as const,
-        }
-      : {}),
     input: model.input,
     // DeepAI bills Theos per request, not USD per token.
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
     contextWindow: model.contextWindow,
     maxTokens: model.maxTokens,
   };
+  const thinking = modelThinking({ ...definition, provider: PROVIDER_ID, baseUrl: BASE_URL });
+  return { ...definition, ...(thinking ? { thinking } : {}) };
+}
+
+export function projectDeepAIModels(models: Model[]): Model[] {
+  return models.map((model) => {
+    const { thinking: _previous, ...rest } = model;
+    const thinking = modelThinking(model);
+    return { ...rest, ...(thinking ? { thinking } : {}) };
+  });
 }
 
 // OMP persists discovery rows. Resolve the native API from the live catalog on
