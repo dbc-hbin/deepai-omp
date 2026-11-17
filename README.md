@@ -27,11 +27,15 @@ omp models deepai-code
 
 ## 지원 범위
 
-- 공개 모델 카탈로그에서 모델 ID, 입력 형식, 컨텍스트 크기, 출력 한도를 가져옵니다. 초기 모델은 앱에 내장된 `glm-5.3-flash`입니다.
-- 추론 단계는 OMP의 검토된 모델별 규칙을 사용합니다. GPT-6 계열에는 `xhigh`와 `max`, GLM·DeepSeek·Kimi 계열에는 `max`가 표시됩니다. 모델별 규칙이 없는 모델은 DeepAI 앱의 기존 `minimal / low / medium / high` 범위를 유지합니다. 저장된 모델 캐시에도 같은 규칙을 적용하므로 캐시 만료를 기다릴 필요는 없습니다. 실행 중인 OMP는 재시작해야 새 익스텐션을 읽습니다.
+- 로그인 키로 인증한 모델 카탈로그에서 모델 ID, 입력 형식, 컨텍스트 크기, 출력 한도를 가져옵니다. 초기 모델은 앱에 내장된 `glm-5.3-flash`입니다.
+- 추론 단계는 원 제공사의 공식 모델별 지원 범위를 사용합니다. Claude·GPT-6·MiniMax M3.1 Flash는 `low / medium / high / xhigh / max`, GLM 5.3·DeepSeek V4.1 Flash·Kimi K3는 `low / high / max`, Qwen 3.8은 `low / medium / xhigh`를 제공합니다. Gemini 4 Argon·Carbon은 3단계이고 Hydrogen은 `xhigh`를 추가로 제공합니다. Muse Ember·Wonder·Spark 1.3은 `minimal`부터 `max`까지 6단계입니다.
+- MiMo 2.6 Flash·Pro는 공식 배포 카탈로그의 `Off(none) / low / medium / high`를 제공하며 기본값은 `low`입니다. DeepAI의 Chat 요청에는 `reasoning_effort`, Responses 요청에는 `reasoning.effort`로 전달합니다. 공식 호환 규칙에 따라 `minimal`은 `low`, `xhigh / max`는 `high`로 정규화합니다. [MiMo API 문서](https://mimo.mi.com/static/docs/api/chat/responses-post.md)는 현재 활성화된 effort 사이의 실제 추론 강도는 구분하지 않는다고 명시합니다.
+- MiniMax M3는 강도 조절 없이 켜기/끄기만 지원합니다. OMP에서는 `high`가 켜기에 해당하며, 요청에는 `reasoning_effort` 대신 공식 `thinking.type`을 보냅니다. 필수 추론 모델에는 Off를 제공하지 않고 강제 Off 요청도 최저 지원 단계로 처리합니다. Solar의 기존 `minimal` 요청은 공식 의미대로 추론 끄기로 전송합니다.
+- 공식 effort 목록이 없는 DeepAI Cyber·Glyph Cluster와 미등록 모델에는 단계를 임의로 만들지 않습니다. 추론 내용은 유지하되 effort 제어 필드를 보내지 않아 서버 기본 동작을 사용합니다. 저장된 모델 캐시에도 같은 규칙을 적용하므로 캐시 만료를 기다릴 필요는 없습니다. 실행 중인 OMP는 재시작해야 새 익스텐션을 읽습니다.
 - 스트리밍, 도구 호출과 결과 재전송, 이미지 입력, 추론 내용, 토큰 사용량은 OMP의 OpenAI 전송 구현을 사용합니다.
 - 모델 카탈로그가 `openai-responses`를 지정하면 Responses API를 사용하고, 나머지는 Chat Completions API를 사용합니다.
-- 데스크톱 앱 0.3.20과 같은 lane 4 헤더를 전송합니다. macOS에서는 실제 IOPlatformUUID의 SHA-256 다이제스트를 머신 식별 헤더로 사용합니다. 다른 OS의 머신 식별은 구현하지 않았으므로 머신 인증이 필요한 모델은 제한될 수 있습니다.
+- 데스크톱 앱 0.3.37의 lane 6 규약을 사용합니다. 계정별 체크인을 호출 전에 확인하고 유효기간의 절반이 지나면 갱신합니다. 체크인에는 이 익스텐션의 실제 이름과 버전을 표시하며 앱의 포커스 상태를 가장하지 않습니다. macOS에서는 실제 IOPlatformUUID의 SHA-256 다이제스트를 머신 식별 헤더로 사용합니다. 다른 OS의 머신 식별은 구현하지 않았으므로 머신 인증이 필요한 모델은 제한될 수 있습니다.
+- 세션 식별자를 캐시 키와 affinity 헤더에 함께 전달하고, 이미지가 없는 일반 텍스트 사용자 입력만 문자열로 정규화합니다. `409/session_busy`는 서버의 대기 시간에 따라 취소 가능한 상태로 재시도하며, 다른 오류를 임의로 재전송하지 않습니다.
 - 모델별 무료/유료 여부와 Theos 차감은 DeepAI가 결정합니다. 카탈로그의 달러 단위 토큰 비용은 0으로 표시하므로 OMP의 달러 비용 표시를 DeepAI 청구 금액으로 해석하면 안 됩니다.
 
 ## 개발 검사
@@ -48,6 +52,6 @@ pnpm exec oxfmt --check
 ## 참고
 
 - [lavabyte/deepai-gateway](https://github.com/lavabyte/deepai-gateway): DeepAI Code의 로그인, 모델 API 및 전송 규약을 참고했습니다.
-- 사용자가 제공한 DeepAI Code 0.3.20 ARM64 앱의 JavaScript 번들에서 현재 로그인 경로와 lane 4 헤더를 확인했습니다.
+- 설치된 DeepAI Code 0.3.37 ARM64 앱을 CANY CLI로 분석해 모델 인증, lane 6 체크인과 LLM 전송 규약을 확인했습니다.
 
 `nka551774-hue/deepai2api`의 웹 채팅 `tryit` 인증 경로는 사용하지 않습니다.
