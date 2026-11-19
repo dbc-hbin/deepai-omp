@@ -51,6 +51,25 @@ function modelThinking(model: Model | ModelSpec): ThinkingConfig | undefined {
         };
       }
       break;
+    // https://api-docs.deepseek.com/guides/thinking_mode
+    case "deepseek-v4.1-flash":
+      if (thinking) {
+        thinking = {
+          ...thinking,
+          defaultLevel: EFFORT.high,
+          effortMap: {
+            ...thinking.effortMap,
+            [EFFORT.medium]: EFFORT.high,
+          },
+        };
+      }
+      break;
+    // https://platform.openai.com/docs/models/gpt-6.1-sol
+    case "gpt-6-luna":
+    case "gpt-6.1-sol":
+    case "gpt-6.1-terra":
+      if (thinking) thinking = { ...thinking, defaultLevel: EFFORT.medium };
+      break;
     // Gemini 4 uses native thinking levels; Hydrogen adds xhigh.
     // https://ai.google.dev/gemini-api/docs/whats-new-gemini-4-hydrogen
     case "gemini-4-argon":
@@ -70,7 +89,7 @@ function modelThinking(model: Model | ModelSpec): ThinkingConfig | undefined {
         requiresEffort: true,
       };
       break;
-    // Xiaomi's published model catalog offers none/low/medium/high (default low).
+    // Keep the menu aligned with Xiaomi's Codex catalog: none/low/medium/high.
     // https://mimo.mi.com/docs/en-US/tokenplan/integration/codex-configuration
     // The Responses schema normalizes minimal -> low and xhigh/max -> high;
     // accepted effort values do not currently imply different reasoning depth.

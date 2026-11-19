@@ -29,7 +29,7 @@ omp models deepai-code
 
 - 로그인 키로 인증한 모델 카탈로그에서 모델 ID, 입력 형식, 컨텍스트 크기, 출력 한도를 가져옵니다. 초기 모델은 앱에 내장된 `glm-5.3-flash`입니다.
 - 추론 단계는 원 제공사의 공식 모델별 지원 범위를 사용합니다. Claude·GPT-6·MiniMax M3.1 Flash는 `low / medium / high / xhigh / max`, GLM 5.3·DeepSeek V4.1 Flash·Kimi K3는 `low / high / max`, Qwen 3.8은 `low / medium / xhigh`를 제공합니다. Gemini 4 Argon·Carbon은 3단계이고 Hydrogen은 `xhigh`를 추가로 제공합니다. Muse Ember·Wonder·Spark 1.3은 `minimal`부터 `max`까지 6단계입니다.
-- MiMo 2.6 Flash·Pro는 공식 배포 카탈로그의 `Off(none) / low / medium / high`를 제공하며 기본값은 `low`입니다. DeepAI의 Chat 요청에는 `reasoning_effort`, Responses 요청에는 `reasoning.effort`로 전달합니다. 공식 호환 규칙에 따라 `minimal`은 `low`, `xhigh / max`는 `high`로 정규화합니다. [MiMo API 문서](https://mimo.mi.com/static/docs/api/chat/responses-post.md)는 현재 활성화된 effort 사이의 실제 추론 강도는 구분하지 않는다고 명시합니다.
+- MiMo 2.6 Flash·Pro는 [Xiaomi 공식 Codex 카탈로그](https://mimo.mi.com/docs/en-US/tokenplan/integration/codex-configuration)대로 `Off(none) / low / medium / high`를 제공하며 기본값은 `low`입니다. DeepAI의 Chat 요청에는 `reasoning_effort`, Responses 요청에는 `reasoning.effort`로 전달합니다. `minimal`은 `low`로, 별도 메뉴가 아닌 호환 입력 `xhigh / max`는 `high`로 정규화합니다. [MiMo Responses 문서](https://mimo.mi.com/static/docs/api/chat/responses-post.md)에 따르면 현재 `none` 이외의 값은 추론을 켜며, 실제 강도는 구분되지 않습니다.
 - MiniMax M3는 강도 조절 없이 켜기/끄기만 지원합니다. OMP에서는 `high`가 켜기에 해당하며, 요청에는 `reasoning_effort` 대신 공식 `thinking.type`을 보냅니다. 필수 추론 모델에는 Off를 제공하지 않고 강제 Off 요청도 최저 지원 단계로 처리합니다. Solar의 기존 `minimal` 요청은 공식 의미대로 추론 끄기로 전송합니다.
 - 공식 effort 목록이 없는 DeepAI Cyber·Glyph Cluster와 미등록 모델에는 단계를 임의로 만들지 않습니다. 추론 내용은 유지하되 effort 제어 필드를 보내지 않아 서버 기본 동작을 사용합니다. 저장된 모델 캐시에도 같은 규칙을 적용하므로 캐시 만료를 기다릴 필요는 없습니다. 실행 중인 OMP는 재시작해야 새 익스텐션을 읽습니다.
 - 스트리밍, 도구 호출과 결과 재전송, 이미지 입력, 추론 내용, 토큰 사용량은 OMP의 OpenAI 전송 구현을 사용합니다.

@@ -80,6 +80,7 @@ const thinkingWireCases: readonly ThinkingWireCase[] = [
   { id: "gemini-4-carbon", effort: EFFORT.medium, wireEffort: "medium" },
   { id: "gemini-4-hydrogen", effort: EFFORT.xhigh, wireEffort: "xhigh" },
   { id: "glm-5.3-flash", wireEffort: "low" },
+  { id: "deepseek-v4.1-flash", effort: EFFORT.medium, wireEffort: "high" },
   { id: "deepseek-v4.1-flash", effort: EFFORT.max, wireEffort: "max" },
   { id: "kimi-k3", wireEffort: "low" },
   { id: "kimi-k3.1-pro", effort: EFFORT.max, wireEffort: "max" },
