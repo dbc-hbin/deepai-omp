@@ -81,6 +81,66 @@ interface CheckInState {
 }
 const checkIns = new Map<string, CheckInState>();
 
+const theosSchema = z.object({
+  enabled: z.boolean().optional(),
+  balance: z
+    .string()
+    .regex(/^-?\d+(?:\.\d+)?$/)
+    .nullish(),
+  granted: z
+    .string()
+    .regex(/^-?\d+(?:\.\d+)?$/)
+    .nullish(),
+  refresh_at: z.iso.datetime({ offset: true }).nullish(),
+});
+
+async function requestTheos(options: DeepAIRequestOptions) {
+  options.signal?.throwIfAborted();
+  const apiKey = options.apiKey;
+  if (!apiKey) throw new ConfigurationError("Sign in to DeepAI Code with /login first.");
+  const state: CheckInState = checkIns.get(apiKey) ?? {};
+  checkIns.set(apiKey, state);
+  const noteCheckIn = (payload: unknown) => {
+    const parsed = checkInSchema.safeParse(payload);
+    if (!parsed.success) return false;
+    const { nonce, seconds } = parsed.data.check_in;
+    const now = Date.now();
+    state.mark = { nonce, renewAt: now + (seconds * 1000) / 2, expiresAt: now + seconds * 1000 };
+    return true;
+  };
+  try {
+    const payload: unknown = await http
+      .get(`${BASE_URL}/theos`, {
+        headers: {
+          ...LANE_HEADERS,
+          ...(await machineHeaders()),
+          "api-key": apiKey,
+          "X-DeepAI-Code-Beacon": `v=${packageInfo.version};up=${Math.floor(process.uptime())};client=${packageInfo.name}`,
+          ...(state.mark ? { "X-DeepAI-Code-Check-In": state.mark.nonce } : {}),
+        },
+        ...(options.signal ? { signal: options.signal } : {}),
+        ...(options.fetch ? { fetch: options.fetch } : {}),
+      })
+      .json();
+    return { payload, checkedIn: noteCheckIn(payload) };
+  } catch (error) {
+    if (error instanceof HTTPError) {
+      noteCheckIn(
+        await error.response
+          .clone()
+          .json()
+          .catch(() => undefined),
+      );
+    }
+    throw error;
+  }
+}
+
+export async function fetchTheos(options: DeepAIRequestOptions) {
+  const { payload } = await requestTheos(options);
+  return theosSchema.parse(payload);
+}
+
 export async function ensureCheckedIn(options: DeepAIRequestOptions): Promise<void> {
   options.signal?.throwIfAborted();
   const apiKey = options.apiKey;
@@ -89,40 +149,18 @@ export async function ensureCheckedIn(options: DeepAIRequestOptions): Promise<vo
   checkIns.set(apiKey, state);
   if (state.mark && Date.now() < state.mark.renewAt) return;
   if (!state.pending) {
-    const noteCheckIn = (payload: unknown) => {
-      const parsed = checkInSchema.safeParse(payload);
-      if (!parsed.success) return false;
-      const { nonce, seconds } = parsed.data.check_in;
-      const now = Date.now();
-      state.mark = { nonce, renewAt: now + (seconds * 1000) / 2, expiresAt: now + seconds * 1000 };
-      return true;
-    };
     // The renewal belongs to the account, not to whichever concurrent turn
     // started it. Each waiter can cancel without aborting the shared request.
     state.pending = (async () => {
+      const previousMark = state.mark;
       try {
-        const payload: unknown = await http
-          .get(`${BASE_URL}/theos`, {
-            headers: {
-              ...LANE_HEADERS,
-              ...(await machineHeaders()),
-              "api-key": apiKey,
-              "X-DeepAI-Code-Beacon": `v=${packageInfo.version};up=${Math.floor(process.uptime())};client=${packageInfo.name}`,
-              ...(state.mark ? { "X-DeepAI-Code-Check-In": state.mark.nonce } : {}),
-            },
-            ...(options.fetch ? { fetch: options.fetch } : {}),
-          })
-          .json();
-        if (!noteCheckIn(payload)) throw new Error("DeepAI did not return a valid check-in.");
+        const { checkedIn } = await requestTheos({
+          apiKey,
+          ...(options.fetch ? { fetch: options.fetch } : {}),
+        });
+        if (!checkedIn) throw new Error("DeepAI did not return a valid check-in.");
       } catch (error) {
-        const refreshed =
-          error instanceof HTTPError &&
-          noteCheckIn(
-            await error.response
-              .clone()
-              .json()
-              .catch(() => undefined),
-          );
+        const refreshed = state.mark !== previousMark;
         if (
           state.mark &&
           Date.now() < state.mark.expiresAt &&

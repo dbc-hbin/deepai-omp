@@ -2,6 +2,7 @@ import { API_ID, BASE_URL, PROVIDER_ID, SEED_MODEL } from "./api";
 import { fetchDeepAIModels, modelDefinition } from "./catalog";
 import { deepAIOAuth } from "./oauth";
 import { streamDeepAI } from "./stream";
+import { deepAIUsageProvider } from "./usage";
 
 // Structural host contract keeps the extension independent of the CLI package.
 interface ExtensionAPI {
@@ -16,6 +17,7 @@ interface ExtensionAPI {
       models: ReturnType<typeof modelDefinition>[];
       fetchDynamicModels: typeof fetchDeepAIModels;
       streamSimple: typeof streamDeepAI;
+      usage: typeof deepAIUsageProvider;
     },
   ): void;
 }
@@ -30,5 +32,6 @@ export default function deepAICodeExtension(pi: ExtensionAPI): void {
     models: [modelDefinition(SEED_MODEL)],
     fetchDynamicModels: fetchDeepAIModels,
     streamSimple: streamDeepAI,
+    usage: deepAIUsageProvider,
   });
 }
